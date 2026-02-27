@@ -23,12 +23,12 @@ int to_int(const char *text, int *out) {
 }
 
 void print_usage(void) {
-  write(2, "Uso: ./mycalc <num1> <op> <num2>\n", 33);
-  write(2, "Uso: ./mycalc -b <num_operacion>\n", 33);
+  if (write(2, "Uso: ./mycalc <num1> <op> <num2>\n", 33) < 0) return;
+  if (write(2, "Uso: ./mycalc -b <num_operacion>\n", 33) < 0) return;
 }
 
 void print_error(const char *msg, int len) {
-  write(2, msg, (size_t)len);
+  if (write(2, msg, (size_t)len) < 0) return;
 }
 
 int str_len(const char *text) {
