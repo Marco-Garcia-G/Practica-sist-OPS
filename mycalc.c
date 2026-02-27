@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
     }
 
     close(fd);
-    print_error("Error: operacion no encontrada\n", 31);
+    print_error("Error: El numero de linea no es valido\n", 39);
     return -1;
   }
 
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   if (calc_status == -2) {
-    print_error("Error: division por cero\n", 25);
+    print_error("Error: Division por cero\n", 25);
     return -1;
   }
   if (calc_status == -3) {
