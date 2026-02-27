@@ -3,6 +3,8 @@ const char *binary_file = "mydu.bin";
 
 
 int main(int argc, char *argv[]) {
+  (void)argc;
+  (void)argv;
 
   /* Completar */
 
