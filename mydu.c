@@ -83,10 +83,18 @@ long calculate_dir_size(const char *dirpath) {
   struct dirent *entry;
   struct stat st;
   char fullpath[MAX_PATH_LEN];
-  long total_size;
-  long subdir_size;
+  long total_blocks;
+  long subdir_blocks;
   long subdir_kb;
   int fd;
+
+  /* sumamos los bloques del propio directorio primero */
+  if (lstat(dirpath, &st) < 0) {
+    fprintf(stderr, "Error: no se pudo acceder a %s\n", dirpath);
+    return -1;
+  }
+  total_blocks = st.st_blocks;
+
   /* intentamos abrir el directorio para poder leer sus entradas */
   dir = opendir(dirpath);
   if (dir == NULL) {
@@ -94,7 +102,6 @@ long calculate_dir_size(const char *dirpath) {
     return -1;
   }
 
-  total_size = 0;
 
   /*
    readdir nos va dando las entradas del directorio una a una.
@@ -130,21 +137,19 @@ long calculate_dir_size(const char *dirpath) {
     if (S_ISDIR(st.st_mode)) {
       /*
        Es un subdirectorio: nos llamamos a nosotros mismos con su ruta.
-       El resultado es el tamano de ese subdirectorio en bytes, que sumamos al total del directorio padre.
+       El resultado es la cantidad de bloques de ese subdirectorio, que sumamos al total del directorio padre.
        */
-      subdir_size = calculate_dir_size(fullpath);
-      if (subdir_size < 0) {
+      subdir_blocks = calculate_dir_size(fullpath);
+      if (subdir_blocks < 0) {
         closedir(dir);
         return -1;
       }
-      total_size += subdir_size;
+      total_blocks += subdir_blocks;
         /*
        Convertimos a KB antes de guardar en el binario.
-       Sumamos 511 antes de dividir para redondear hacia arriba:
-       si un directorio ocupa 513 bytes, ocupa 2 bloques de 512, no 1.
-       Esto imita el comportamiento del comando 'du' del sistema.
+       st.st_blocks devuelve los bloques de 512 bytes, asi que para pasarlo a KB (1024 bytes) usamos / 2.
        */
-      subdir_kb = (subdir_size + 511) / 512;
+      subdir_kb = subdir_blocks / 2;
       /* guardamos esta entrada en el fichero binario */
       fd = open(binary_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
       if (fd < 0) {
@@ -161,14 +166,13 @@ long calculate_dir_size(const char *dirpath) {
       /* mostramos el subdirectorio y su tamano por pantalla */
       printf("%ld\t%s\n", subdir_kb, fullpath);
     } else {
-      /* Es un fichero regular: sumamos su tamano en bytes al total */
-       total_size += st.st_size;
-      total_size += st.st_size;
+      /* Es un fichero regular: sumamos sus bloques (de 512B) al total */
+      total_blocks += st.st_blocks;
     }
   }
 
   closedir(dir);
-  return total_size;
+  return total_blocks;
 }
 
 /*
@@ -256,7 +260,7 @@ int is_directory(const char *path) {
  */
 int main(int argc, char *argv[]) {
   char *target_path;
-  long total_size;
+  long total_blocks;
   long total_kb;
   int fd;
 
@@ -290,13 +294,13 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  /* calculamos el tamano total del directorio de forma recursiva */
-  total_size = calculate_dir_size(target_path);
-  if (total_size < 0) {
+  /* calculamos los bloques totales del directorio de forma recursiva */
+  total_blocks = calculate_dir_size(target_path);
+  if (total_blocks < 0) {
     return -1;
   }
-  /* convertimos a KB redondeando hacia arriba */
-  total_kb = (total_size + 511) / 512;
+  /* convertimos a KB (cada bloque en st.st_blocks equivale a 512 bytes) */
+  total_kb = total_blocks / 2;
 
   /* guardamos el resultado en el fichero binario */
   fd = open(binary_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
